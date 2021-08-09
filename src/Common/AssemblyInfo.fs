@@ -2,16 +2,16 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("SQLProvider")>]
-[<assembly: AssemblyProductAttribute("SQLProvider")>]
+[<assembly: AssemblyTitleAttribute("Varons.Custom.SQLProvider")>]
+[<assembly: AssemblyProductAttribute("Varons.Custom.SQLProvider")>]
 [<assembly: AssemblyDescriptionAttribute("Type providers for SQL database access.")>]
 [<assembly: AssemblyVersionAttribute("1.2.8")>]
 [<assembly: AssemblyFileVersionAttribute("1.2.8")>]
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "SQLProvider"
-    let [<Literal>] AssemblyProduct = "SQLProvider"
+    let [<Literal>] AssemblyTitle = "Varons.Custom.SQLProvider"
+    let [<Literal>] AssemblyProduct = "Varons.Custom.SQLProvider"
     let [<Literal>] AssemblyDescription = "Type providers for SQL database access."
     let [<Literal>] AssemblyVersion = "1.2.8"
     let [<Literal>] AssemblyFileVersion = "1.2.8"

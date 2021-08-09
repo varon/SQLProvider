@@ -56,7 +56,7 @@ let environVarOrDefault varName defaultValue =
 // The name of the project
 // (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
 
-let project = "SQLProvider"
+let project = "Varons.Custom.SQLProvider"
 
 // Short summary of the project
 // (used as description in AssemblyInfo and as a short summary for NuGet package)
@@ -429,23 +429,23 @@ Target.create "All" ignore
 
 
 Target.create "BuildDocs" ignore
-
-"Clean"
-  ==> "AssemblyInfo"
-  // In CI mode, we setup a Postgres database before building
-  =?> ("SetupPostgreSQL", not Fake.Core.BuildServer.isLocalBuild)
-  // On AppVeyor, we also add a SQL Server 2008R2 one and a SQL Server 2017 for compatibility
-  =?> ("SetupMSSQL2008R2", Fake.Core.BuildServer.buildServer = AppVeyor)
-  =?> ("SetupMSSQL2017", Fake.Core.BuildServer.buildServer = AppVeyor)
-  ==> "Build"
-  ==> "BuildTests"
-  ==> "RunTests"
-  ==> "PackNuGet"
-  ==> "CleanDocs"
-  // Travis doesn't support mono+dotnet:
-  =?> ("GenerateReferenceDocs", Fake.Core.BuildServer.isLocalBuild && not Fake.Core.Environment.isMono)
-  =?> ("GenerateHelp", Fake.Core.BuildServer.isLocalBuild && not Fake.Core.Environment.isMono)
-  ==> "All"
+//
+//"Clean"
+//  ==> "AssemblyInfo"
+//  // In CI mode, we setup a Postgres database before building
+//  =?> ("SetupPostgreSQL", not Fake.Core.BuildServer.isLocalBuild)
+//  // On AppVeyor, we also add a SQL Server 2008R2 one and a SQL Server 2017 for compatibility
+//  =?> ("SetupMSSQL2008R2", Fake.Core.BuildServer.buildServer = AppVeyor)
+//  =?> ("SetupMSSQL2017", Fake.Core.BuildServer.buildServer = AppVeyor)
+//  ==> "Build"
+//  ==> "BuildTests"
+//  ==> "RunTests"
+//  ==> "PackNuGet"
+//  ==> "CleanDocs"
+//  // Travis doesn't support mono+dotnet:
+//  =?> ("GenerateReferenceDocs", Fake.Core.BuildServer.isLocalBuild && not Fake.Core.Environment.isMono)
+//  =?> ("GenerateHelp", Fake.Core.BuildServer.isLocalBuild && not Fake.Core.Environment.isMono)
+//  ==> "All"
 
 "Build"
   ==> "NuGet"
