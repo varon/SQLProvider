@@ -1,3 +1,6 @@
+### 1.2.10 - 09.08.2021
+* read-only fs support
+
 ### 1.2.9 - 09.08.2021
 * improved wider path search for dacpac
 

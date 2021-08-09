@@ -16,64 +16,97 @@ open FSharp.Data.Sql.Ssdt.DacpacParser
 
 module MSSqlServerSsdt =
 
+    [<Literal>]
+    let DACPAC_SEARCH_PATH_ENV_VAR_NAME = "SQLPROVIDER_SSDT_DACPAC_FILE_LOOKUP_PATH"
 
     /// Tries to find .dacpac file using the given path at design time or by searching the runtime assembly path.
     let findDacPacFile (dacPacPath: string) =
+
+        let fileInfoOpt path =
+            try
+                FileInfo path |> Some
+            with e -> None
+
         // Find at design time using SsdtPath
         let ssdtFile = IO.FileInfo(dacPacPath)
-        let dacPacFileName = Path.Combine(ssdtFile.Name)
-        let origPath = ssdtFile.Directory.FullName
+        let dacPacFileName = ssdtFile.Name
+        let origPath =
+            (Option.ofObj ssdtFile.Directory)
+            |> Option.map (fun d -> d.FullName)
+            |> Option.defaultValue "."
 
         let asmToPath (asm:Assembly) =
-            match asm with
-            | null -> None
-            | a ->
-                let dllPath = IO.FileInfo(a.Location)
-                let dllDir = dllPath.Directory.FullName
-                Some dllDir
+            Option.ofObj asm
+            |> Option.bind (fun a -> fileInfoOpt a.Location)
+            |> Option.map (fun d -> d.Directory.FullName)
 
         /// generate many combinations to try.
-        let paths = [|
-            yield origPath
-            // working dir
-            yield Environment.CurrentDirectory
-            yield Path.Combine(Environment.CurrentDirectory, origPath)
-            // entry asm dir
-            match asmToPath (Assembly.GetEntryAssembly()) with
-            | Some p ->
-                let rootDirectory = Path.GetFullPath(Path.Combine(p, ".."))
-                yield p
-                yield rootDirectory
-                yield Path.Combine(p, origPath)
-            | _ -> ()
-            // executing assembly dir
-            match asmToPath (Assembly.GetExecutingAssembly()) with
-            | Some p ->
-                // on Azure Functions, there is some very weird type mapping. We also recurse up from the executing dir.
-                let rootDirectory = Path.GetFullPath(Path.Combine(p, ".."))
-                yield p
-                yield rootDirectory
-                yield Path.Combine(p, origPath)
-            | _ -> ()
-        |]
+        let paths =
+            [
+                // working dir
+                yield Environment.CurrentDirectory
+                yield Path.Combine(Environment.CurrentDirectory, origPath)
+                // entry asm dir
+                match asmToPath (Assembly.GetEntryAssembly()) with
+                | Some p ->
+                    yield p
+                    yield Path.Combine(p, origPath)
+                | _ -> ()
+                // executing assembly dir
+                match asmToPath (Assembly.GetExecutingAssembly()) with
+                | Some p ->
+                    yield p
+                    yield Path.Combine(p, origPath)
+                | _ -> ()
+            ]
+            |> List.map Path.GetFullPath // sort out the trailing slashes situation
+            |> List.distinct
+
+        let chooseDacpac dirPath =
+            if String.IsNullOrWhiteSpace dirPath then
+                None
+            else
+                try
+                    Path.Combine(dirPath, dacPacFileName)
+                    |> fileInfoOpt
+                with
+                | :? UnauthorizedAccessException -> None
+
+
+        // also read the special environment variable
+        let envVarPath = Environment.GetEnvironmentVariable(DACPAC_SEARCH_PATH_ENV_VAR_NAME)
+        let fromEnvVar =
+            if String.IsNullOrWhiteSpace envVarPath then
+                []
+            else
+                let envFilePath = fileInfoOpt envVarPath
+                let relativeEnvFilePath =
+                    envFilePath |> Option.bind (fun d -> chooseDacpac d.Directory.FullName)
+                [
+                    envFilePath
+                    relativeEnvFilePath
+                ] |> List.choose id
+
+
 
         let allPossiblePaths =
             paths
-            |> Array.map (fun p -> Path.Combine(p, dacPacFileName) |> IO.FileInfo)
+            |> List.choose chooseDacpac
+            |> List.distinct
+            |> List.append fromEnvVar
 
-        let bestOption = allPossiblePaths |> Array.tryFind (fun fi -> fi.Exists)
+        let bestOption = allPossiblePaths |> List.tryFind (fun fi -> fi.Exists)
 
         match bestOption with
         | Some b -> b.FullName
         | None ->
             let sb = new StringBuilder()
-            sb.AppendLine("Unable to find .dacpac file. Search path includes executing assembly, configured ssd path, and entry assembly.") |> ignore
+            sb.AppendLine(sprintf "Unable to find .dacpac file. Search path includes executing assembly, configured ssd path, entry assembly, and the environment variable '%s'." DACPAC_SEARCH_PATH_ENV_VAR_NAME) |> ignore
             sb.AppendLine("Looked in:") |> ignore
             for s in allPossiblePaths do
                 sb.Append("\t") |> ignore
                 sb.AppendLine(s.FullName) |> ignore
             failwith (sb.ToString())
-
 
 
     /// Tries to parse a schema model from the given .dacpac file path.
