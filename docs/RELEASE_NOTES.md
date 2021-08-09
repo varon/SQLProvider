@@ -1,3 +1,6 @@
+### 1.2.9 - 09.08.2021
+* improved wider path search for dacpac
+
 ### 1.2.8 - 09.08.2021
 * Wider path search for dacpac
 
