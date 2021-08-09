@@ -101,7 +101,7 @@ Target.create "AssemblyInfo" (fun _ ->
         Fake.DotNet.AssemblyInfo.Product project
         Fake.DotNet.AssemblyInfo.Description summary
         Fake.DotNet.AssemblyInfo.Version release.AssemblyVersion
-        Fake.DotNet.AssemblyInfo.FileVersion release.AssemblyVersion ] 
+        Fake.DotNet.AssemblyInfo.FileVersion release.AssemblyVersion ]
 )
 
 // --------------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ Target.create "Clean" (fun _ ->
     !! "**/**/bin/" |> Shell.cleanDirs
     !! "**/**/temp/" |> Shell.cleanDirs
     !! "**/**/test*/**/obj/" |> Shell.cleanDirs
-    
+
     Shell.cleanDirs ["bin"; "temp"]
 )
 
@@ -142,27 +142,27 @@ Target.create "SetupPostgreSQL" (fun _ ->
       connBuilder.Port <- 5432
       connBuilder.Database <- "postgres"
       connBuilder.Username <- "postgres"
-      connBuilder.Password <- 
+      connBuilder.Password <-
         match Fake.Core.BuildServer.buildServer with
         | Travis -> ""
         | AppVeyor -> "Password12!"
-        | _ -> "postgres"      
-  
-      let runCmd query = 
+        | _ -> "postgres"
+
+      let runCmd query =
         // We wait up to 30 seconds for PostgreSQL to be initialized
-        let rec runCmd' attempt = 
+        let rec runCmd' attempt =
           try
             use conn = new Npgsql.NpgsqlConnection(connBuilder.ConnectionString)
             conn.Open()
             use cmd = new Npgsql.NpgsqlCommand(query, conn)
-            cmd.ExecuteNonQuery() |> ignore 
-          with e -> 
+            cmd.ExecuteNonQuery() |> ignore
+          with e ->
             printfn "Connection attempt %i: %A" attempt e
             Threading.Thread.Sleep 1000
             if attempt < 30 then runCmd' (attempt + 1)
 
         runCmd' 0
-              
+
       let testDbName = "sqlprovider"
       printfn "Creating test database %s on connection %s" testDbName connBuilder.ConnectionString
       runCmd (sprintf "CREATE DATABASE %s" testDbName)
@@ -170,7 +170,7 @@ Target.create "SetupPostgreSQL" (fun _ ->
 
       (!! "src/DatabaseScripts/PostgreSQL/*.sql")
       |> Seq.map (fun file -> printfn "Running script %s on connection %s" file connBuilder.ConnectionString; file)
-      |> Seq.map IO.File.ReadAllText      
+      |> Seq.map IO.File.ReadAllText
       |> Seq.iter runCmd
 	  *)
     ()
@@ -179,31 +179,31 @@ Target.create "SetupPostgreSQL" (fun _ ->
 // --------------------------------------------------------------------------------------
 // Set up a MS SQL Server database to run tests
 
-let setupMssql url saPassword = 
-  
-    let connBuilder = System.Data.SqlClient.SqlConnectionStringBuilder()    
+let setupMssql url saPassword =
+
+    let connBuilder = System.Data.SqlClient.SqlConnectionStringBuilder()
     connBuilder.InitialCatalog <- "master"
     connBuilder.UserID <- "sa"
     connBuilder.DataSource <- url
-    connBuilder.Password <- saPassword   
-          
-    let runCmd query = 
+    connBuilder.Password <- saPassword
+
+    let runCmd query =
       // We wait up to 30 seconds for MSSQL to be initialized
-      let rec runCmd' attempt = 
+      let rec runCmd' attempt =
         try
           use conn = new Data.SqlClient.SqlConnection(connBuilder.ConnectionString)
           conn.Open()
           use cmd = new Data.SqlClient.SqlCommand(query, conn)
-          cmd.ExecuteNonQuery() |> ignore 
-        with e -> 
+          cmd.ExecuteNonQuery() |> ignore
+        with e ->
           printfn "Connection attempt %i: %A" attempt e
           Threading.Thread.Sleep 1000
           if attempt < 30 then runCmd' (attempt + 1)
 
       runCmd' 0
 
-    let runScript fileLines =            
-            
+    let runScript fileLines =
+
       // We look for the 'GO' lines that complete the individual SQL commands
       let rec cmdGen cache (lines : string list) =
         seq {
@@ -212,7 +212,7 @@ let setupMssql url saPassword =
           | cmds, [] -> yield cmds
           | cmds, l :: ls when l.Trim().ToUpper() = "GO" -> yield cmds; yield! cmdGen [] ls
           | cmds, l :: ls -> yield! cmdGen (l :: cmds) ls
-        }      
+        }
 
       for cmd in cmdGen [] (fileLines |> Seq.toList) do
         let query = cmd |> List.rev |> String.concat "\r\n"
@@ -227,9 +227,9 @@ let setupMssql url saPassword =
     |> Seq.map (fun file -> printfn "Running script %s on connection %s" file connBuilder.ConnectionString; file)
     |> Seq.map IO.File.ReadAllLines
     |> Seq.iter runScript
-   
+
     (url,saPassword) |> ignore
-    
+
 Target.create "SetupMSSQL2008R2" (fun _ ->
     setupMssql "(local)\\SQL2008R2SP2" "Password12!"
 )
@@ -242,7 +242,7 @@ Target.create "SetupMSSQL2017" (fun _ ->
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner
 
-Target.create "RunTests" (fun _ -> 
+Target.create "RunTests" (fun _ ->
 
     Fake.DotNet.DotNet.test (fun p ->
         { p with
@@ -253,7 +253,7 @@ Target.create "RunTests" (fun _ ->
             }) "SQLProvider.Tests.sln"
 
 (*
-    !! testAssemblies 
+    !! testAssemblies
     |> Fake.DotNet.Testing.NUnit3.run (fun p ->
         { p with
             DisableShadowCopy = true
@@ -294,8 +294,8 @@ Target.create "NuGet" (fun _ ->
 )
 
 Target.create "PackNuGet" (fun _ ->
-    let _ = 
-        Fake.DotNet.Paket.pack(fun p -> 
+    let _ =
+        Fake.DotNet.Paket.pack(fun p ->
             { p with
                 ToolType = Fake.DotNet.ToolType.CreateLocalTool()
                 OutputPath = "bin"
@@ -307,7 +307,7 @@ Target.create "PackNuGet" (fun _ ->
     Branches.tag "" release.NugetVersion
 
     ()
-) 
+)
 
 // --------------------------------------------------------------------------------------
 // Generate the documentation
@@ -370,7 +370,7 @@ Target.create "GenerateHelpDebug" (fun _ ->
     generateHelp' true true
 )
 
-Target.create "KeepRunning" (fun _ ->    
+Target.create "KeepRunning" (fun _ ->
     use watcher = new FileSystemWatcher(DirectoryInfo("docs/content").FullName,"*.*")
     watcher.EnableRaisingEvents <- true
     watcher.Changed.Add(fun _ -> generateHelp false)
@@ -420,7 +420,7 @@ Target.create "Release" (fun _ ->
     // push manually: nuget.exe push bin\SQLProvider.1.*.nupkg -Source https://www.nuget.org/api/v2/package
     //Branches.pushTag "" "upstream" release.NugetVersion
     ()
-) 
+)
 
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
@@ -431,7 +431,7 @@ Target.create "All" ignore
 Target.create "BuildDocs" ignore
 
 "Clean"
-  ==> "AssemblyInfo"  
+  ==> "AssemblyInfo"
   // In CI mode, we setup a Postgres database before building
   =?> ("SetupPostgreSQL", not Fake.Core.BuildServer.isLocalBuild)
   // On AppVeyor, we also add a SQL Server 2008R2 one and a SQL Server 2017 for compatibility
@@ -449,11 +449,11 @@ Target.create "BuildDocs" ignore
 
 "Build"
   ==> "NuGet"
-  
+
 "All"
   ==> "BuildDocs"
 
-"All" 
+"All"
 #if MONO
 #else
   //=?> ("SourceLink", Pdbstr.tryFind().IsSome )
@@ -462,7 +462,7 @@ Target.create "BuildDocs" ignore
   ==> "ReleaseDocs"
   ==> "Release"
 
-"All" 
+"All"
   ==> "Release"
 
 Target.runOrDefaultWithArguments "RunTests"

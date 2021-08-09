@@ -1,3 +1,6 @@
+### 1.2.8 - 09.08.2021
+* Wider path search for dacpac
+
 ### 1.2.7 - 19.07.2021
 * GroupBy parameter column name improvements
 
